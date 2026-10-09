@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { supabase } from '../lib/supabase'
 import { errorMessage, isNetworkError } from '../lib/errors'
-import { cacheFiles, clearFiles, clearSnapshot, loadSnapshot, saveSnapshot, type Snapshot } from '../lib/offline'
+import { cacheFiles, clearFiles, clearSnapshot, getFile, loadSnapshot, saveSnapshot, type Snapshot } from '../lib/offline'
 import { normalize } from '../lib/parts'
 import type { FileRow, Member, Piece, Position, Setlist, SetlistItem } from '../lib/types'
 
@@ -224,10 +224,12 @@ export const useApp = defineStore('app', () => {
     await cacheFiles(paths, async (p) => must(await bucket().download(p)), onProgress)
   }
 
+  const fileBlob = (path: string) => getFile(path, async (p) => must(await bucket().download(p)))
+
   return {
     user, members, positions, pieces, files, setlists, inviteToken, loadError, offline, me, isOwner,
     start, refresh, reload, sendCode, verifyCode, join, updateMe, signOut,
     savePositions, deletePosition, resetInvite, removeMember,
-    savePiece, deletePiece, updateFile, deleteFile, upload, saveSetlist, deleteSetlist, downloadSetlist,
+    savePiece, deletePiece, updateFile, deleteFile, upload, saveSetlist, deleteSetlist, downloadSetlist, fileBlob,
   }
 })

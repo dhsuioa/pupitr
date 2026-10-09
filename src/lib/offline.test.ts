@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { neededPaths, offlineStatus } from './offline'
+import { describe, expect, it, vi } from 'vitest'
+import { getFile, neededPaths, offlineStatus } from './offline'
 import type { FileRow } from './types'
 
 const file = (id: string, piece_id: string, position_id: string | null): FileRow => ({
@@ -27,5 +27,21 @@ describe('offlineStatus', () => {
     expect(offlineStatus(3, 3)).toBe('ready')
     expect(offlineStatus(1, 3)).toBe('partial')
     expect(offlineStatus(0, 3)).toBe('none')
+  })
+})
+
+describe('getFile', () => {
+  it('первый раз — из сети и в кэш, второй — с устройства без сети', async () => {
+    const store = new Map<string, Response>()
+    ;(globalThis as { caches?: unknown }).caches = {
+      open: async () => ({
+        match: async (k: string) => store.get(k)?.clone(),
+        put: async (k: string, r: Response) => void store.set(k, r),
+      }),
+    }
+    const fetchFile = vi.fn(async () => new Blob(['ноты']))
+    expect(await (await getFile('a/1.pdf', fetchFile)).text()).toBe('ноты')
+    expect(await (await getFile('a/1.pdf', fetchFile)).text()).toBe('ноты')
+    expect(fetchFile).toHaveBeenCalledTimes(1)
   })
 })

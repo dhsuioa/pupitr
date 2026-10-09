@@ -65,3 +65,13 @@ export async function cacheFiles(paths: string[], fetchFile: (path: string) => P
 
 // ponytail: старые версии файлов из кэша не чистим — мегабайты; чистка по пути, когда понадобится
 export const clearFiles = () => globalThis.caches?.delete(CACHE)
+
+// Сначала с устройства; если файла там нет — из сети и сразу в кэш.
+export async function getFile(path: string, fetchFile: (path: string) => Promise<Blob>): Promise<Blob> {
+  const cache = await caches.open(CACHE)
+  const hit = await cache.match(key(path))
+  if (hit) return hit.blob()
+  const blob = await fetchFile(path)
+  await cache.put(key(path), new Response(blob))
+  return blob
+}
