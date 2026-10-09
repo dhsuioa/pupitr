@@ -104,7 +104,10 @@ const signOut = () => app.signOut().then(() => router.replace('/login'))
             </button>
           </template>
         </div>
-        <p class="text-sm text-neutral-400">Скачанные на устройство ноты у удалённого участника останутся.</p>
+        <p class="text-sm text-neutral-400">
+          Скачанные на устройство ноты у удалённого участника останутся. Чтобы он не вернулся по старой ссылке,
+          сбросьте её.
+        </p>
       </section>
     </template>
 

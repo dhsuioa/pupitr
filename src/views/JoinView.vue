@@ -24,7 +24,11 @@ async function join() {
   }
 }
 
-onMounted(() => (app.user ? join() : (step.value = 'login')))
+onMounted(async () => {
+  await app.start()
+  if (app.user) join()
+  else step.value = 'login'
+})
 </script>
 
 <template>

@@ -1,10 +1,24 @@
 <script setup lang="ts">
+import { watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
+import { useApp } from './stores/app'
 
 const { needRefresh, updateServiceWorker } = useRegisterSW()
+const app = useApp()
+const route = useRoute()
+const router = useRouter()
+
+// Сессия пропала (вышли на другом устройстве, токен отозван) — на вход.
+watch(() => app.user, (u) => {
+  if (!u && !route.meta.public) router.replace('/login')
+})
 </script>
 
 <template>
+  <div v-if="app.offline" class="bg-neutral-800 px-4 py-1 text-center text-sm text-neutral-300">
+    Нет связи — показаны сохранённые данные
+  </div>
   <RouterView />
   <div
     v-if="needRefresh"

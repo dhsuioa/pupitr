@@ -12,9 +12,10 @@ export const router = createRouter({
   ],
 })
 
+// Публичные страницы не ждут сеть; остальные ждут только при первом запуске без снимка.
 router.beforeEach(async (to) => {
+  if (to.meta.public) return true
   const app = useApp()
   await app.start()
-  if (to.meta.public || app.user) return true
-  return { path: '/login', query: { next: to.fullPath } }
+  return app.user ? true : { path: '/login', query: { next: to.fullPath } }
 })
