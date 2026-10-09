@@ -55,6 +55,7 @@ const remove = () => run(async () => {
       <h1 class="text-2xl font-semibold">{{ piece?.title ?? 'Пьеса не найдена' }}</h1>
       <RouterLink to="/library" class="link shrink-0">Библиотека</RouterLink>
     </header>
+    <RouterLink v-if="piece && files.length" :to="`/stage/piece/${id}`" class="btn inline-block">▶ Открыть ноты</RouterLink>
     <p v-if="error" class="text-red-400">{{ error }}</p>
     <template v-if="piece">
       <form v-if="app.isOwner" class="space-y-2" @submit.prevent="save">

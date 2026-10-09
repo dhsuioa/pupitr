@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
 import { useApp } from './stores/app'
@@ -8,6 +8,7 @@ const { needRefresh, updateServiceWorker } = useRegisterSW()
 const app = useApp()
 const route = useRoute()
 const router = useRouter()
+const onStage = computed(() => route.path.startsWith('/stage'))
 
 // Сессия пропала (вышли на другом устройстве, токен отозван) — на вход.
 watch(() => app.user, (u) => {
@@ -16,12 +17,12 @@ watch(() => app.user, (u) => {
 </script>
 
 <template>
-  <div v-if="app.offline" class="bg-neutral-800 px-4 py-1 text-center text-sm text-neutral-300">
+  <div v-if="app.offline && !onStage" class="bg-neutral-800 px-4 py-1 text-center text-sm text-neutral-300">
     Нет связи — показаны сохранённые данные
   </div>
   <RouterView />
   <div
-    v-if="needRefresh"
+    v-if="needRefresh && !onStage"
     class="fixed inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-amber-300 p-3 text-black"
   >
     <span>Есть обновление приложения</span>

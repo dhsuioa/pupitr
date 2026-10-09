@@ -96,6 +96,7 @@ onMounted(() => {
     <p v-if="error" class="text-red-400">{{ error }}</p>
     <template v-if="setlist">
       <p class="text-neutral-400">Пунктов: {{ items.length }} · общая длина {{ formatDuration(total) }}</p>
+      <RouterLink v-if="items.length" :to="`/stage/${id}`" class="btn inline-block">▶ На сцену</RouterLink>
       <section class="space-y-2 rounded border border-neutral-700 p-3">
         <p :class="status === 'ready' ? 'text-green-400' : 'text-neutral-300'">{{ statusText[status] }}</p>
         <button v-if="status === 'partial' || status === 'none'" :disabled="busy" class="btn" @click="download">
@@ -109,6 +110,7 @@ onMounted(() => {
           <RouterLink v-if="'piece' in it" :to="`/piece/${it.piece}`" class="flex-1">{{ pieceTitle(it.piece) }}</RouterLink>
           <span v-else class="flex-1 italic">{{ it.label }}</span>
           <span class="text-sm text-neutral-400">{{ formatDuration(itemSeconds(it, app.pieces)) }}</span>
+          <RouterLink :to="`/stage/${id}?i=${k}`" class="link" title="Открыть с этого места">▶</RouterLink>
           <button v-if="app.isOwner" :disabled="busy" class="link" @click="removeAt(k)">✕</button>
         </li>
       </ol>

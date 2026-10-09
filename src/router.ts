@@ -11,6 +11,8 @@ export const router = createRouter({
     { path: '/library', component: () => import('./views/LibraryView.vue') },
     { path: '/piece/:id', component: () => import('./views/PieceView.vue') },
     { path: '/setlist/:id', component: () => import('./views/SetlistView.vue') },
+    { path: '/stage/:id', name: 'stage', component: () => import('./views/StageView.vue') },
+    { path: '/stage/piece/:id', name: 'stage-piece', component: () => import('./views/StageView.vue') },
     { path: '/diag', component: () => import('./views/DiagView.vue'), meta: { public: true } },
   ],
 })
