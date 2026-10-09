@@ -14,7 +14,7 @@
 1. Создать проект Supabase и выполнить `supabase/migrations/*.sql` по порядку. Проверка политик: выполнить `supabase/tests/rls.sql`, ожидается `rls ok`.
 2. Authentication → Emails → SMTP Settings: свой SMTP (например, Gmail с паролем приложения, `smtp.gmail.com:465`).
 3. Authentication → Emails → Templates: в шаблонах Magic Link и Confirm signup — только код `{{ .Token }}`, без ссылки.
-4. Вписать URL проекта и publishable key в `.env`.
+4. Вписать URL проекта и publishable key в локальный `.env` (в git он не идёт) и в переменные репозитория `VITE_SUPABASE_URL` и `VITE_SUPABASE_KEY` (GitHub → Settings → Secrets and variables → Actions → Variables) — из них собирается деплой.
 5. Войти в приложение своей почтой и назначить себя владельцем:
    ```sql
    insert into public.members (user_id, role, email)
