@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Sortable from 'sortablejs'
 import { useApp, type SetlistItem } from '../stores/app'
 import { useAction } from '../lib/errors'
 import { formatDuration, itemSeconds, parseDuration, setlistTotal } from '../lib/setlist'
+import { cachedCount, neededPaths, offlineStatus } from '../lib/offline'
 
 const app = useApp()
 const router = useRouter()
@@ -20,6 +21,27 @@ const label = ref('')
 const labelTime = ref('')
 const confirmDelete = ref(false)
 const list = ref<HTMLElement>()
+const paths = computed(() => neededPaths(items.value, app.files, app.me?.position_id ?? null))
+const have = ref(0)
+const progress = ref<number | null>(null)
+const status = computed(() => offlineStatus(have.value, paths.value.length))
+const statusText = {
+  empty: 'В сетлисте пока нет нот.',
+  ready: 'Готово к офлайну ✓',
+  partial: 'Есть изменения — докачайте.',
+  none: 'Ноты ещё не скачаны на это устройство.',
+}
+const check = async () => (have.value = await cachedCount(paths.value))
+watch(paths, check, { immediate: true })
+const download = () => run(async () => {
+  progress.value = 0
+  try {
+    await app.downloadSetlist(paths.value, (n) => (progress.value = n))
+  } finally {
+    progress.value = null
+    await check()
+  }
+})
 
 const save = (next: SetlistItem[], title = setlist.value!.title) => run(() => app.saveSetlist({ id, title, items: next }))
 const add = () => {
@@ -74,6 +96,12 @@ onMounted(() => {
     <p v-if="error" class="text-red-400">{{ error }}</p>
     <template v-if="setlist">
       <p class="text-neutral-400">Пунктов: {{ items.length }} · общая длина {{ formatDuration(total) }}</p>
+      <section class="space-y-2 rounded border border-neutral-700 p-3">
+        <p :class="status === 'ready' ? 'text-green-400' : 'text-neutral-300'">{{ statusText[status] }}</p>
+        <button v-if="status === 'partial' || status === 'none'" :disabled="busy" class="btn" @click="download">
+          {{ progress === null ? 'Скачать на устройство' : `Скачиваем ${progress} из ${paths.length}` }}
+        </button>
+      </section>
       <ol ref="list" class="space-y-1">
         <li v-for="(it, k) in items" :key="k" class="flex items-center gap-2 rounded border border-neutral-700 px-2 py-2">
           <span v-if="app.isOwner" class="handle cursor-grab touch-none select-none px-1 text-neutral-500">⠿</span>

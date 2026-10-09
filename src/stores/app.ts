@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { supabase } from '../lib/supabase'
 import { errorMessage, isNetworkError } from '../lib/errors'
-import { clearSnapshot, loadSnapshot, saveSnapshot, type Snapshot } from '../lib/offline'
+import { cacheFiles, clearFiles, clearSnapshot, loadSnapshot, saveSnapshot, type Snapshot } from '../lib/offline'
 import { normalize } from '../lib/parts'
 import type { FileRow, Member, Piece, Position, Setlist, SetlistItem } from '../lib/types'
 
@@ -51,6 +51,7 @@ export const useApp = defineStore('app', () => {
     inviteToken.value = null
     offline.value = false
     clearSnapshot()
+    clearFiles()
   }
 
   // Ошибка getSession — это неудачное обновление токена (обычно сеть), а не выход: сессия в хранилище цела.
@@ -219,10 +220,14 @@ export const useApp = defineStore('app', () => {
     await refresh()
   }
 
+  async function downloadSetlist(paths: string[], onProgress: (n: number) => void) {
+    await cacheFiles(paths, async (p) => must(await bucket().download(p)), onProgress)
+  }
+
   return {
     user, members, positions, pieces, files, setlists, inviteToken, loadError, offline, me, isOwner,
     start, refresh, reload, sendCode, verifyCode, join, updateMe, signOut,
     savePositions, deletePosition, resetInvite, removeMember,
-    savePiece, deletePiece, updateFile, deleteFile, upload, saveSetlist, deleteSetlist,
+    savePiece, deletePiece, updateFile, deleteFile, upload, saveSetlist, deleteSetlist, downloadSetlist,
   }
 })

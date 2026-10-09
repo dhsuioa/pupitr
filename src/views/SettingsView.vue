@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApp, type Position } from '../stores/app'
 import { useAction } from '../lib/errors'
@@ -12,6 +12,8 @@ const name = ref(app.me?.display_name ?? '')
 const newPosition = ref('')
 const confirmRemove = ref<string | null>(null)
 const copied = ref(false)
+const persisted = ref<boolean | null>(null)
+onMounted(async () => (persisted.value = (await navigator.storage?.persisted?.()) ?? null))
 const inviteUrl = computed(() => `${location.origin}${import.meta.env.BASE_URL}#/join/${app.inviteToken}`)
 const positionName = (id: string | null) => app.positions.find((p) => p.id === id)?.name ?? 'партитура'
 const value = (e: Event) => (e.target as HTMLInputElement).value
@@ -110,6 +112,15 @@ const signOut = () => app.signOut().then(() => router.replace('/login'))
         </p>
       </section>
     </template>
+
+    <section class="space-y-1">
+      <h2 class="font-medium">Ноты на этом устройстве</h2>
+      <p class="text-sm text-neutral-400">
+        {{ persisted
+          ? 'Браузер обещал не удалять скачанные ноты.'
+          : 'Браузер может удалить скачанные ноты при нехватке места — перед концертом проверяйте «Готово к офлайну» у сетлиста.' }}
+      </p>
+    </section>
 
     <section class="space-y-2">
       <RouterLink to="/diag" class="link block">Проверка педали и экрана</RouterLink>

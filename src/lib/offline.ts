@@ -1,4 +1,4 @@
-import type { FileRow, Member, Piece, Position, Setlist } from './types'
+import type { FileRow, Member, Piece, Position, Setlist, SetlistItem } from './types'
 
 // Снимок библиотеки на устройстве: из него интерфейс рисуется сразу, сеть только обновляет.
 export type Snapshot = {
@@ -29,3 +29,39 @@ export function saveSnapshot(s: Snapshot) {
 }
 
 export const clearSnapshot = () => localStorage.removeItem(KEY)
+
+// Файлы скачанных сетлистов лежат в Cache Storage; путь неизменяем, поэтому ключ — сам путь.
+const CACHE = 'scores'
+const key = (path: string) => `files/${path}`
+
+// Для сетлиста нужны файлы своей позиции и партитуры каждой пьесы.
+export function neededPaths(items: SetlistItem[], files: FileRow[], positionId: string | null): string[] {
+  const ids = new Set(items.flatMap((it) => ('piece' in it ? [it.piece] : [])))
+  return files
+    .filter((f) => ids.has(f.piece_id) && (f.position_id === null || f.position_id === positionId))
+    .map((f) => f.path)
+}
+
+export type OfflineStatus = 'empty' | 'ready' | 'partial' | 'none'
+export const offlineStatus = (have: number, total: number): OfflineStatus =>
+  total === 0 ? 'empty' : have === total ? 'ready' : have > 0 ? 'partial' : 'none'
+
+// Статус проверяем по факту: Safari может удалить кэш по своим правилам.
+export async function cachedCount(paths: string[]): Promise<number> {
+  const cache = await caches.open(CACHE)
+  const hits = await Promise.all(paths.map((p) => cache.match(key(p))))
+  return hits.filter(Boolean).length
+}
+
+export async function cacheFiles(paths: string[], fetchFile: (path: string) => Promise<Blob>, onProgress: (n: number) => void) {
+  const cache = await caches.open(CACHE)
+  let done = 0
+  for (const p of paths) {
+    if (!(await cache.match(key(p)))) await cache.put(key(p), new Response(await fetchFile(p)))
+    onProgress(++done)
+  }
+  await navigator.storage?.persist?.()
+}
+
+// ponytail: старые версии файлов из кэша не чистим — мегабайты; чистка по пути, когда понадобится
+export const clearFiles = () => globalThis.caches?.delete(CACHE)
