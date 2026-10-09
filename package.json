@@ -11,6 +11,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
     "jszip": "^3.10.2",
+    "opensheetmusicdisplay": "^2.2.0",
+    "pdfjs-dist": "^6.4.299",
     "pinia": "^4.0.3",
     "sortablejs": "^1.15.7",
     "vue": "^3.5.43",

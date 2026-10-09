@@ -25,7 +25,8 @@ export default defineConfig({
           { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,ico}'] },
+      // .mjs — воркер pdf.js; OSMD весит больше стандартного предела 2 МБ.
+      workbox: { globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico}'], maximumFileSizeToCacheInBytes: 6 * 1024 * 1024 },
     }),
   ],
   test: { environment: 'node' },
