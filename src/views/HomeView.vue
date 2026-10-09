@@ -14,7 +14,10 @@ const signOut = () => app.signOut().then(() => router.replace('/login'))
   <main class="mx-auto max-w-lg space-y-4 p-6">
     <header class="flex items-center justify-between">
       <h1 class="text-2xl font-semibold">Пюпитр</h1>
-      <RouterLink v-if="app.me" to="/settings" class="link">Настройки</RouterLink>
+      <nav v-if="app.me" class="flex gap-4">
+        <RouterLink to="/library" class="link">Библиотека</RouterLink>
+        <RouterLink to="/settings" class="link">Настройки</RouterLink>
+      </nav>
     </header>
     <p v-if="app.loadError" class="text-red-400">
       {{ app.loadError }} <button class="link" @click="app.reload()">Повторить</button>

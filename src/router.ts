@@ -8,6 +8,8 @@ export const router = createRouter({
     { path: '/login', component: () => import('./views/LoginView.vue'), meta: { public: true } },
     { path: '/join/:token', component: () => import('./views/JoinView.vue'), meta: { public: true } },
     { path: '/settings', component: () => import('./views/SettingsView.vue') },
+    { path: '/library', component: () => import('./views/LibraryView.vue') },
+    { path: '/piece/:id', component: () => import('./views/PieceView.vue') },
     { path: '/diag', component: () => import('./views/DiagView.vue'), meta: { public: true } },
   ],
 })
