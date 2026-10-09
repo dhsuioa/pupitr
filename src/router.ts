@@ -10,6 +10,7 @@ export const router = createRouter({
     { path: '/settings', component: () => import('./views/SettingsView.vue') },
     { path: '/library', component: () => import('./views/LibraryView.vue') },
     { path: '/piece/:id', component: () => import('./views/PieceView.vue') },
+    { path: '/setlist/:id', component: () => import('./views/SetlistView.vue') },
     { path: '/diag', component: () => import('./views/DiagView.vue'), meta: { public: true } },
   ],
 })
