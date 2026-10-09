@@ -1,4 +1,4 @@
-import type { Position } from './types'
+import type { FileRow, Position } from './types'
 
 // «Trumpet in B♭ 1» → «trumpetinbb1»: регистр, бемоль и всё, кроме букв и цифр, не важны.
 export const normalize = (s: string) => s.toLowerCase().replace(/♭/g, 'b').replace(/[^\p{L}\p{N}]/gu, '')
@@ -58,4 +58,28 @@ export function conflicts(rows: Array<{ kind: string | null; choice: string }>):
     else bad.add(first).add(k)
   })
   return bad
+}
+
+// Что открыть музыканту. Для предпочитаемого формата, потом для второго: своя партия, а в MusicXML —
+// ещё и его часть из партитуры. Если ничего нет — партитура целиком.
+export function pickFile(
+  files: FileRow[],
+  position: Position | null,
+  prefer: 'pdf' | 'musicxml',
+): { file: FileRow; extract: string | null } | null {
+  const order = prefer === 'pdf' ? (['pdf', 'musicxml'] as const) : (['musicxml', 'pdf'] as const)
+  for (const kind of order) {
+    if (!position) break
+    const own = files.find((f) => f.kind === kind && f.position_id === position.id)
+    if (own) return { file: own, extract: null }
+    if (kind !== 'musicxml') continue
+    const score = files.find((f) => f.kind === 'musicxml' && f.position_id === null)
+    const part = score?.part_names.find((n) => matchPosition(n, [position]) === position.id)
+    if (score && part) return { file: score, extract: part }
+  }
+  for (const kind of order) {
+    const score = files.find((f) => f.kind === kind && f.position_id === null)
+    if (score) return { file: score, extract: null }
+  }
+  return null
 }

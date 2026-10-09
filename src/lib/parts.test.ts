@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { conflicts, matchPosition, partFromFileName, planUpload } from './parts'
-import type { Position } from './types'
+import { conflicts, matchPosition, partFromFileName, pickFile, planUpload } from './parts'
+import type { FileRow, Position } from './types'
 
 const positions: Position[] = [
   { id: 'tp1', name: 'Труба 1', aliases: ['Trumpet in B♭ 1'], sort: 0 },
@@ -95,4 +95,32 @@ describe('conflicts', () => {
   it('две партитуры одного формата', () => {
     expect([...conflicts([{ kind: 'pdf', choice: 'score' }, { kind: 'pdf', choice: 'score' }])]).toEqual([0, 1])
   })
+})
+
+describe('pickFile', () => {
+  const f = (id: string, kind: 'pdf' | 'musicxml', position_id: string | null, part_names: string[] = []): FileRow => ({
+    id, piece_id: 'x', kind, position_id, path: `x/${id}`, name: id, part_names, bars_per_page: null,
+  })
+  const tp1 = positions[0]
+  const score = f('score-xml', 'musicxml', null, ['Trumpet in B♭ 1', 'Bass Guitar'])
+  const scorePdf = f('score-pdf', 'pdf', null)
+
+  it('своя партия в предпочитаемом формате, иначе в другом', () => {
+    const own = [f('tp-pdf', 'pdf', 'tp1'), f('tp-xml', 'musicxml', 'tp1'), score]
+    expect(pickFile(own, tp1, 'pdf')?.file.id).toBe('tp-pdf')
+    expect(pickFile(own, tp1, 'musicxml')?.file.id).toBe('tp-xml')
+    expect(pickFile([f('tp-pdf', 'pdf', 'tp1')], tp1, 'musicxml')?.file.id).toBe('tp-pdf')
+  })
+  it('предпочтение MusicXML: часть из партитуры MusicXML раньше своего PDF', () => {
+    expect(pickFile([f('tp-pdf', 'pdf', 'tp1'), score], tp1, 'musicxml')).toEqual({ file: score, extract: 'Trumpet in B♭ 1' })
+  })
+  it('своей партии нет — часть из партитуры MusicXML по алиасу', () => {
+    expect(pickFile([scorePdf, score], tp1, 'pdf')).toEqual({ file: score, extract: 'Trumpet in B♭ 1' })
+  })
+  it('части с таким именем нет — партитура целиком в предпочитаемом формате', () => {
+    const flute: Position = { id: 'fl', name: 'Флейта', aliases: [], sort: 2 }
+    expect(pickFile([scorePdf, score], flute, 'pdf')).toEqual({ file: scorePdf, extract: null })
+    expect(pickFile([scorePdf, score], null, 'musicxml')).toEqual({ file: score, extract: null })
+  })
+  it('файлов нет — null', () => expect(pickFile([], tp1, 'pdf')).toBeNull())
 })

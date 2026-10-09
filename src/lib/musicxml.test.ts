@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import JSZip from 'jszip'
-import { parseXml, partNames, readMusicXml } from './musicxml'
+import { extractPart, parseXml, partNames, readMusicXml } from './musicxml'
 
 const score = (...names: string[]) => `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0"><part-list>${names
@@ -41,5 +41,18 @@ describe('parseXml и partNames', () => {
   it('не MusicXML — понятная ошибка', () => {
     expect(() => parseXml('<html><body/></html>')).toThrow('Это не MusicXML')
     expect(() => parseXml('<<<')).toThrow('Это не MusicXML')
+  })
+})
+
+describe('extractPart', () => {
+  it('оставляет одну часть и её ноты', () => {
+    const xml = extractPart(parseXml(score('Trumpet', 'Bass')), 'Bass')
+    const doc = parseXml(xml)
+    expect(partNames(doc)).toEqual(['Bass'])
+    expect(doc.querySelectorAll('part')).toHaveLength(1)
+    expect(doc.querySelector('part')?.getAttribute('id')).toBe('P2')
+  })
+  it('незнакомое имя — партитура без изменений', () => {
+    expect(partNames(parseXml(extractPart(parseXml(score('A', 'B')), 'C')))).toEqual(['A', 'B'])
   })
 })
