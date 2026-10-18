@@ -41,7 +41,8 @@ export function readMeasures(doc: Document): Measure[] {
     // Указания MuseScore пишет в верхнюю часть, поэтому <sound> собираем со всех частей.
     const sounds = parts.flatMap((p) => [...(p[i]?.querySelectorAll('sound') ?? [])])
     const attr = (name: string) => sounds.find((s) => s.hasAttribute(name))?.getAttribute(name) ?? null
-    const tempo = Number(attr('tempo'))
+    // Два знака темпа в такте — дальше действует последний (сам такт считаем в одном темпе).
+    const tempo = Number(sounds.filter((s) => s.hasAttribute('tempo')).at(-1)?.getAttribute('tempo'))
     const back = m.querySelector('repeat[direction="backward"]')
     const ending = m.querySelector('ending[type="start"]')
     return {

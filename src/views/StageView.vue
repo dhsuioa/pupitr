@@ -7,7 +7,7 @@ import { extractPart, parseXml, readMusicXml } from '../lib/musicxml'
 import { withTimeout } from '../lib/offline'
 import { pickFile } from '../lib/parts'
 import {
-  LONG_PRESS_MS, eventIndexAt, firstEventTime, keyAction, linearPlayed, loadPrefs, makePlan, savePrefs, screenOf, step, tapAction,
+  LONG_PRESS_MS, eventIndexAt, eventTimeNear, keyAction, linearPlayed, loadPrefs, makePlan, savePrefs, screenOf, step, tapAction,
   type Action, type Plan, type Pos,
 } from '../lib/stage'
 import { borrowTempos, pageOfMeasure, played, quarterTempo, readMeasures, type Measure, type Played } from '../lib/timeline'
@@ -157,7 +157,7 @@ async function pdfPlan(pages: number) {
       return
     }
     planNote.value = f.bars_per_page.length === pages ? '' : `Такты указаны для ${f.bars_per_page.length} страниц из ${pages}`
-    plan.value = makePlan(linearPlayed(f.bars_per_page, (p.beats_per_bar * 60) / p.bpm), prefs.value.lead)
+    plan.value = makePlan(linearPlayed(f.bars_per_page, (p.beats_per_bar * 60) / p.bpm, pages), prefs.value.lead)
     return
   }
   const twin = app.files.find((g) => g.piece_id === p.id && g.kind === 'musicxml' && g.position_id === f.position_id)
@@ -174,6 +174,8 @@ async function pdfPlan(pages: number) {
       return
     }
     const page = pageOfMeasure(ms)
+    const xmlPages = (page[page.length - 1] ?? 0) + 1
+    planNote.value = xmlPages === pages ? '' : `Разрывы страниц в MusicXML (${xmlPages}) не совпадают с PDF (${pages}) — листание может спешить или опаздывать`
     plan.value = makePlan(pl.map((x) => ({ ...x, screen: Math.min(page[x.measure] ?? 0, pages - 1) })), prefs.value.lead)
   } catch (e) {
     if (ticket === seq) planNote.value = `Автолистание недоступно: ${errorMessage(e)}`
@@ -230,9 +232,13 @@ function toggle() {
     return stop()
   }
   if (!plan.value) return flash(planNote.value || (piece.value ? 'Автолистание ещё готовится' : 'Здесь нет нот'))
-  const from = pausedAt && pausedAt.screen === pos.value.screen ? pausedAt.t : firstEventTime(plan.value.events, pos.value.screen)
+  const ev = plan.value.events
+  const from = pausedAt
+    ? pausedAt.screen === pos.value.screen ? pausedAt.t : eventTimeNear(ev, pos.value.screen, pausedAt.t)
+    : eventTimeNear(ev, pos.value.screen, 0)
   pausedAt = null
   start(from)
+  if (planNote.value) flash(planNote.value) // план есть, но с оговоркой — сказать при старте
 }
 
 function act(a: Action) {

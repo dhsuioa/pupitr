@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eventIndexAt, firstEventTime, keyAction, linearPlayed, makePlan, schedule, screenOf, sliceScreens, step, tapAction } from './stage'
+import { eventIndexAt, eventTimeNear, keyAction, linearPlayed, makePlan, schedule, screenOf, sliceScreens, step, tapAction } from './stage'
 
 describe('step', () => {
   it('вперёд по экранам, потом в следующий пункт', () => {
@@ -66,15 +66,20 @@ describe('поиск по расписанию', () => {
     expect(eventIndexAt(ev, 5)).toBe(1)
     expect(eventIndexAt(ev, 100)).toBe(2)
   })
-  it('время первого показа экрана; незнакомый экран — 0', () => {
-    expect(firstEventTime(ev, 1)).toBe(4)
-    expect(firstEventTime(ev, 7)).toBe(0)
+  it('показ экрана, ближайший к моменту: свежий старт — первый показ, после паузы — текущий проход', () => {
+    const rep = [{ t: 0, screen: 0 }, { t: 10, screen: 1 }, { t: 20, screen: 0 }, { t: 30, screen: 1 }, { t: 40, screen: 2 }]
+    expect(eventTimeNear(rep, 1, 0)).toBe(10)
+    expect(eventTimeNear(rep, 0, 35)).toBe(20)
+    expect(eventTimeNear(ev, 7, 12)).toBe(12)
   })
   it('экран нотной строки — последний экран, начавшийся не позже неё', () => {
     expect([0, 1, 2, 3, 4].map((s) => screenOf([0, 2, 4], s))).toEqual([0, 0, 1, 1, 2])
   })
+  it('ручной PDF: лишние значения тактов не уводят за последнюю страницу', () => {
+    expect(linearPlayed([1, 1, 1], 2, 2).map((p) => p.screen)).toEqual([0, 1, 1])
+  })
   it('ручной PDF: такты по страницам с одной длительностью', () => {
-    expect(linearPlayed([2, 1], 3)).toEqual([
+    expect(linearPlayed([2, 1], 3, 2)).toEqual([
       { start: 0, dur: 3, screen: 0 },
       { start: 3, dur: 3, screen: 0 },
       { start: 6, dur: 3, screen: 1 },

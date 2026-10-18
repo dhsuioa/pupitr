@@ -77,6 +77,10 @@ describe('played и duration', () => {
     expect(played(ms, null)).toBeNull()
     expect(played(ms, 60)!.map((x) => x.dur)).toEqual([4, 4])
   })
+  it('два знака темпа в такте — дальше действует последний', () => {
+    const p = played(readMeasures(doc([M(), M(sound('tempo="90"') + sound('tempo="60"')), M()])), null)!
+    expect(p.map((x) => x.dur)).toEqual([2, 4, 4])
+  })
   it('повтор после D.C. возвращает исходный темп', () => {
     const p = played(readMeasures(doc([M(), M(sound('tempo="60"') + sound('dacapo="yes"'))])), null)!
     expect(p.map((x) => x.dur)).toEqual([2, 4, 2, 4])

@@ -89,7 +89,12 @@ export function eventIndexAt(events: Ev[], t: number): number {
   return k
 }
 
-export const firstEventTime = (events: Ev[], screen: number) => events.find((e) => e.screen === screen)?.t ?? 0
+// Показ экрана, ближайший к моменту ref: свежий старт (ref = 0) — первый показ, после паузы — тот же проход повтора.
+export function eventTimeNear(events: Ev[], screen: number, ref: number): number {
+  let best: number | null = null
+  for (const e of events) if (e.screen === screen && (best === null || Math.abs(e.t - ref) < Math.abs(best - ref))) best = e.t
+  return best ?? ref
+}
 
 export function screenOf(screens: number[], system: number): number {
   let k = 0
@@ -97,8 +102,9 @@ export function screenOf(screens: number[], system: number): number {
   return k
 }
 
-export function linearPlayed(barsPerPage: number[], secPerBar: number) {
-  return barsPerPage.flatMap((bars, page) => Array.from({ length: bars }, () => page)).map((screen, k) => ({
+// pages — сколько страниц на самом деле: лишние значения тактов не уводят за последнюю.
+export function linearPlayed(barsPerPage: number[], secPerBar: number, pages: number) {
+  return barsPerPage.flatMap((bars, page) => Array.from({ length: bars }, () => Math.min(page, pages - 1))).map((screen, k) => ({
     start: k * secPerBar,
     dur: secPerBar,
     screen,
