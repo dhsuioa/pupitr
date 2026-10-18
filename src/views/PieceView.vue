@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApp, type FileRow } from '../stores/app'
 import { useAction } from '../lib/errors'
@@ -17,6 +17,9 @@ const form = ref({
   duration: piece.value?.duration_sec ? formatDuration(piece.value.duration_sec) : '',
   bpm: piece.value?.bpm ? String(piece.value.bpm) : '',
   beats: piece.value?.beats_per_bar ? String(piece.value.beats_per_bar) : '',
+})
+watch(() => piece.value?.duration_sec, (d) => {
+  if (d && !form.value.duration) form.value.duration = formatDuration(d)
 })
 const confirmDelete = ref(false)
 

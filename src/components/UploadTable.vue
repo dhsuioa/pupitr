@@ -4,11 +4,12 @@ import { useApp } from '../stores/app'
 import { errorMessage, useAction } from '../lib/errors'
 import { parseXml, partNames, readMusicXml } from '../lib/musicxml'
 import { conflicts, planUpload, type Analyzed } from '../lib/parts'
+import { duration, played, readMeasures } from '../lib/timeline'
 
 const props = defineProps<{ pieceId: string }>()
 const app = useApp()
 const { busy, error, run } = useAction()
-type Row = Analyzed & { file: File; partNames: string[]; choice: string }
+type Row = Analyzed & { file: File; partNames: string[]; choice: string; seconds: number | null }
 const rows = ref<Row[]>([])
 const bad = computed(() => conflicts(rows.value))
 const ready = computed(
@@ -18,15 +19,16 @@ const ready = computed(
 const kindOf = (name: string) =>
   /\.pdf$/i.test(name) ? 'pdf' : /\.(mxl|musicxml|xml)$/i.test(name) ? 'musicxml' : null
 
-async function analyze(file: File): Promise<Analyzed> {
+async function analyze(file: File): Promise<Analyzed & { seconds: number | null }> {
   const kind = kindOf(file.name)
-  if (!kind) return { name: file.name, kind, xmlParts: null, error: 'Не PDF и не MusicXML' }
-  if (kind === 'pdf') return { name: file.name, kind, xmlParts: null, error: '' }
+  if (!kind) return { name: file.name, kind, xmlParts: null, error: 'Не PDF и не MusicXML', seconds: null }
+  if (kind === 'pdf') return { name: file.name, kind, xmlParts: null, error: '', seconds: null }
   try {
     const doc = parseXml(await readMusicXml(await file.arrayBuffer(), file.name))
-    return { name: file.name, kind, xmlParts: partNames(doc), error: '' }
+    const p = played(readMeasures(doc), null)
+    return { name: file.name, kind, xmlParts: partNames(doc), error: '', seconds: p ? duration(p) : null }
   } catch (e) {
-    return { name: file.name, kind, xmlParts: null, error: `Файл не читается: ${errorMessage(e)}` }
+    return { name: file.name, kind, xmlParts: null, error: `Файл не читается: ${errorMessage(e)}`, seconds: null }
   }
 }
 
@@ -46,6 +48,11 @@ const send = () => run(async () => {
       .filter((r) => r.choice !== 'skip')
       .map((r) => ({ file: r.file, kind: r.kind!, partNames: r.partNames, choice: r.choice })),
   )
+  // Длительность пустая — подставляем из MusicXML: с повторами и сменой темпа.
+  const piece = app.pieces.find((p) => p.id === props.pieceId)
+  const secs = rows.value.filter((r) => r.choice !== 'skip' && r.seconds).map((r) => r.seconds!)
+  if (piece && !piece.duration_sec && secs.length)
+    await app.savePiece({ id: piece.id, title: piece.title, duration_sec: Math.round(Math.max(...secs)) })
   rows.value = []
 })
 </script>
