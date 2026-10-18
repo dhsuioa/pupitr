@@ -2,9 +2,11 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
 import { sliceScreens } from '../lib/stage'
+import { parseXml } from '../lib/musicxml'
+import { errorMessage } from '../lib/errors'
 
 const props = defineProps<{ xml: string; screen: number; zoom: number }>()
-const emit = defineEmits<{ layout: [screens: number[], systemOfMeasure: number[]] }>()
+const emit = defineEmits<{ layout: [screens: number[], systemOfMeasure: number[]]; error: [message: string] }>()
 const box = ref<HTMLDivElement>()
 const sheet = ref<HTMLDivElement>()
 const tops = ref<number[]>([0]) // верх каждого экрана, px
@@ -50,9 +52,14 @@ onMounted(async () => {
     drawCredits: false,
     drawPartNames: false,
   })
-  await osmd.load(props.xml)
-  render()
-  addEventListener('resize', render)
+  try {
+    // Документ, а не строка: OSMD принимает строку только с <?xml…?> в начале.
+    await osmd.load(parseXml(props.xml))
+    render()
+    addEventListener('resize', render)
+  } catch (e) {
+    emit('error', errorMessage(e)) // иначе музыкант видит белый лист без объяснений
+  }
 })
 onBeforeUnmount(() => removeEventListener('resize', render))
 watch(() => props.zoom, render)

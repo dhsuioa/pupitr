@@ -83,3 +83,10 @@ export async function getFile(path: string, fetchFile: (path: string) => Promise
   await cache.put(key(path), new Response(blob))
   return blob
 }
+
+// На сцене сеть не ждём: если файла нет на устройстве и сеть молчит, говорим об этом через несколько секунд.
+export function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer = 0
+  const late = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(message)), ms) as unknown as number))
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer))
+}

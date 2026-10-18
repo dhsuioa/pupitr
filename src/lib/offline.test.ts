@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { cacheFiles, getFile, neededPaths, offlineStatus } from './offline'
+import { cacheFiles, getFile, neededPaths, offlineStatus, withTimeout } from './offline'
 import type { FileRow } from './types'
 
 const file = (id: string, piece_id: string, position_id: string | null): FileRow => ({
@@ -63,5 +63,12 @@ describe('cacheFiles', () => {
     await expect(cacheFiles(['a', 'b', 'c'], fetchFile, (n) => progress.push(n))).rejects.toThrow(/Не скачано 1 из 3/)
     expect([...store.keys()]).toEqual(['files/a', 'files/c'])
     expect(progress).toEqual([1, 2, 3])
+  })
+})
+
+describe('withTimeout', () => {
+  it('успел — значение, не успел — понятная ошибка', async () => {
+    await expect(withTimeout(Promise.resolve(7), 50, 'долго')).resolves.toBe(7)
+    await expect(withTimeout(new Promise(() => {}), 10, 'Ноты не скачаны на это устройство')).rejects.toThrow('Ноты не скачаны')
   })
 })

@@ -52,6 +52,9 @@ describe('extractPart', () => {
     expect(doc.querySelectorAll('part')).toHaveLength(1)
     expect(doc.querySelector('part')?.getAttribute('id')).toBe('P2')
   })
+  it('результат начинается с XML-объявления — без него OSMD отвергает строку', () => {
+    expect(extractPart(parseXml(score('Trumpet', 'Bass')), 'Bass')).toMatch(/^<\?xml/)
+  })
   it('незнакомое имя — партитура без изменений', () => {
     expect(partNames(parseXml(extractPart(parseXml(score('A', 'B')), 'C')))).toEqual(['A', 'B'])
   })

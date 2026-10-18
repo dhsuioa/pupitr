@@ -7,7 +7,7 @@ import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
 const props = defineProps<{ blob: Blob; screen: number }>()
-const emit = defineEmits<{ count: [n: number] }>()
+const emit = defineEmits<{ count: [n: number]; error: [message: string] }>()
 const box = ref<HTMLDivElement>()
 let task: pdfjs.PDFDocumentLoadingTask | null = null
 let doc: pdfjs.PDFDocumentProxy | null = null
@@ -54,11 +54,15 @@ function onResize() {
 }
 
 onMounted(async () => {
-  task = pdfjs.getDocument({ data: new Uint8Array(await props.blob.arrayBuffer()) })
-  doc = await task.promise
-  emit('count', doc.numPages)
-  show()
-  addEventListener('resize', onResize)
+  try {
+    task = pdfjs.getDocument({ data: new Uint8Array(await props.blob.arrayBuffer()) })
+    doc = await task.promise
+    emit('count', doc.numPages)
+    await show()
+    addEventListener('resize', onResize)
+  } catch (e) {
+    emit('error', e instanceof Error ? e.message : String(e)) // иначе музыкант видит белый лист без объяснений
+  }
 })
 watch(() => props.screen, show)
 onBeforeUnmount(() => {

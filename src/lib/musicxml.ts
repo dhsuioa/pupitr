@@ -31,5 +31,7 @@ export function extractPart(doc: Document, partName: string): string {
       p.remove()
     }
   }
-  return new XMLSerializer().serializeToString(copy)
+  // Клон теряет <?xml …?>, а OSMD принимает строку как MusicXML только с ним.
+  const xml = new XMLSerializer().serializeToString(copy)
+  return xml.startsWith('<?xml') ? xml : `<?xml version="1.0" encoding="UTF-8"?>\n${xml}`
 }

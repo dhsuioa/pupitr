@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApp, type SetlistItem } from '../stores/app'
 import { errorMessage } from '../lib/errors'
 import { extractPart, parseXml, readMusicXml } from '../lib/musicxml'
+import { withTimeout } from '../lib/offline'
 import { pickFile } from '../lib/parts'
 import {
   LONG_PRESS_MS, eventIndexAt, firstEventTime, keyAction, linearPlayed, loadPrefs, makePlan, savePrefs, screenOf, step, tapAction,
@@ -84,7 +85,8 @@ watch(contentKey, async () => {
     return fixScreen()
   }
   try {
-    const blob = await app.fileBlob(c.file.path)
+    // Нескачанный файл не держит сцену: через 8 с — понятная фраза, педаль листает дальше.
+    const blob = await withTimeout(app.fileBlob(c.file.path), 8000, 'Ноты не скачаны на это устройство, а сеть не отвечает.')
     if (ticket !== seq) return
     if (c.file.kind === 'pdf') content.value = { kind: 'pdf', blob }
     else {
@@ -178,6 +180,13 @@ async function pdfPlan(pages: number) {
   }
 }
 
+// Ноты не отрисовались — та же карточка, что и при ошибке загрузки.
+function onRenderError(message: string) {
+  content.value = { kind: 'text', text: `${piece.value?.title ?? 'Пьеса'}: ноты не открылись. ${message}` }
+  count.value = 1
+  fixScreen()
+}
+
 function onPdfCount(n: number) {
   onCount(n)
   pdfPlan(n)
@@ -254,14 +263,14 @@ const pressedAt = new Map<string, number>()
 function onKeyDown(e: KeyboardEvent) {
   if (menu.value || !keyAction(e.key)) return
   e.preventDefault()
-  if (!e.repeat) pressedAt.set(e.key, performance.now())
+  if (!e.repeat) pressedAt.set(e.key, e.timeStamp) // время события, а не обработки: рендер не удлиняет нажатие
 }
 function onKeyUp(e: KeyboardEvent) {
   const a = keyAction(e.key)
   const t = pressedAt.get(e.key)
   pressedAt.delete(e.key)
   if (menu.value || !a || t === undefined) return
-  act(performance.now() - t >= LONG_PRESS_MS ? 'toggle' : a)
+  act(e.timeStamp - t >= LONG_PRESS_MS ? 'toggle' : a)
 }
 
 const go = (k: number) => {
@@ -288,10 +297,10 @@ onBeforeUnmount(() => {
       Экран может погаснуть — выключите автоблокировку в настройках телефона
     </div>
     <div ref="area" class="relative flex-1 overflow-hidden" @click="onTap">
-      <PdfScreen v-if="content?.kind === 'pdf'" :key="contentKey" :blob="content.blob" :screen="pos.screen" @count="onPdfCount" />
+      <PdfScreen v-if="content?.kind === 'pdf'" :key="contentKey" :blob="content.blob" :screen="pos.screen" @count="onPdfCount" @error="onRenderError" />
       <XmlScreen
         v-else-if="content?.kind === 'xml'" :key="contentKey" :xml="content.xml" :screen="pos.screen"
-        :zoom="prefs.zoom" @layout="onLayout"
+        :zoom="prefs.zoom" @layout="onLayout" @error="onRenderError"
       />
       <div v-else class="flex h-full items-center justify-center p-6 text-center text-2xl text-neutral-200">
         {{ content?.kind === 'text' ? content.text : 'Загружаем…' }}
