@@ -47,6 +47,14 @@ const zoom = (d: number) => (prefs.value = { ...prefs.value, zoom: Math.min(2.5,
           <button class="btn" @click="zoom(0.1)">+</button>
         </div>
       </section>
+      <section class="space-y-2">
+        <h2 class="font-medium">PDF: листать раньше на {{ prefs.lead }} такт(а)</h2>
+        <p class="text-sm text-neutral-400">Страница перевернётся, когда начнётся её последний такт (при 1). 0 — ровно на границе.</p>
+        <div class="flex gap-2">
+          <button class="btn" @click="prefs = { ...prefs, lead: Math.max(0, prefs.lead - 1) }">−</button>
+          <button class="btn" @click="prefs = { ...prefs, lead: Math.min(4, prefs.lead + 1) }">+</button>
+        </div>
+      </section>
     </div>
   </div>
 </template>
