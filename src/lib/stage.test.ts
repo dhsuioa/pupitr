@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { keyAction, sliceScreens, step, tapAction } from './stage'
+import { eventIndexAt, firstEventTime, keyAction, linearPlayed, makePlan, schedule, screenOf, sliceScreens, step, tapAction } from './stage'
 
 describe('step', () => {
   it('вперёд по экранам, потом в следующий пункт', () => {
@@ -40,4 +40,44 @@ describe('sliceScreens', () => {
     expect(sliceScreens(sys(3, 400), 300)).toEqual([0, 1, 2])
   })
   it('нет строк — один экран', () => expect(sliceScreens([], 300)).toEqual([0]))
+})
+
+describe('расписание', () => {
+  const pl = (screens: number[], dur = 2) => screens.map((screen, k) => ({ start: k * dur, dur, screen }))
+  it('без упреждения — экран меняется в начале первого такта на нём', () => {
+    expect(schedule(pl([0, 0, 1, 1, 2]), 0)).toEqual([{ t: 0, screen: 0 }, { t: 4, screen: 1 }, { t: 8, screen: 2 }])
+  })
+  it('упреждение в такт — когда начинается последний такт страницы', () => {
+    expect(schedule(pl([0, 0, 1, 1, 2]), 1)).toEqual([{ t: 0, screen: 0 }, { t: 2, screen: 1 }, { t: 6, screen: 2 }])
+  })
+  it('повтор назад возвращает на ранний экран', () => {
+    expect(schedule(pl([0, 1, 0, 1]), 0).map((e) => e.screen)).toEqual([0, 1, 0, 1])
+  })
+  it('упреждение не уводит раньше предыдущего события', () => {
+    expect(schedule(pl([0, 1, 2]), 3).map((e) => e.t)).toEqual([0, 0, 0])
+  })
+  it('план знает общую длительность', () => expect(makePlan(pl([0, 1]), 0).total).toBe(4))
+})
+
+describe('поиск по расписанию', () => {
+  const ev = [{ t: 0, screen: 0 }, { t: 4, screen: 1 }, { t: 8, screen: 0 }]
+  it('событие в момент t, до начала — первое', () => {
+    expect(eventIndexAt(ev, -1)).toBe(0)
+    expect(eventIndexAt(ev, 5)).toBe(1)
+    expect(eventIndexAt(ev, 100)).toBe(2)
+  })
+  it('время первого показа экрана; незнакомый экран — 0', () => {
+    expect(firstEventTime(ev, 1)).toBe(4)
+    expect(firstEventTime(ev, 7)).toBe(0)
+  })
+  it('экран нотной строки — последний экран, начавшийся не позже неё', () => {
+    expect([0, 1, 2, 3, 4].map((s) => screenOf([0, 2, 4], s))).toEqual([0, 0, 1, 1, 2])
+  })
+  it('ручной PDF: такты по страницам с одной длительностью', () => {
+    expect(linearPlayed([2, 1], 3)).toEqual([
+      { start: 0, dur: 3, screen: 0 },
+      { start: 3, dur: 3, screen: 0 },
+      { start: 6, dur: 3, screen: 1 },
+    ])
+  })
 })
