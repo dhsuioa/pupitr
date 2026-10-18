@@ -28,6 +28,7 @@ export const useApp = defineStore('app', () => {
   const inviteToken = ref<string | null>(null)
   const loadError = ref('')
   const offline = ref(false)
+  const sessionLost = ref(false) // вход истёк сам, а ноты на устройстве остались
   const me = computed(() => members.value.find((m) => m.user_id === user.value?.id) ?? null)
   const isOwner = computed(() => me.value?.role === 'owner')
 
@@ -40,7 +41,7 @@ export const useApp = defineStore('app', () => {
     setlists.value = s.setlists
   }
 
-  // Сессии больше нет: стираем всё, что знали, вместе со снимком на устройстве.
+  // Явный выход: стираем всё, что знали, вместе со снимком и скачанными нотами.
   function forget() {
     user.value = null
     members.value = []
@@ -50,6 +51,7 @@ export const useApp = defineStore('app', () => {
     setlists.value = []
     inviteToken.value = null
     offline.value = false
+    sessionLost.value = false
     clearSnapshot()
     clearFiles()
   }
@@ -58,7 +60,19 @@ export const useApp = defineStore('app', () => {
   async function refresh() {
     const { data, error } = await supabase.auth.getSession()
     if (error) throw error
-    if (!data.session) return forget()
+    if (!data.session) {
+      // Сессия пропала сама (истекла, отозвана, прокси подсунул страницу блокировки) — ноты перед концертом не трогаем.
+      if (user.value && members.value.length) return void (sessionLost.value = true)
+      return forget()
+    }
+    const u = { id: data.session.user.id, email: data.session.user.email ?? null }
+    if (user.value && user.value.id !== u.id) {
+      // Вошёл другой человек — чужие ноты и снимок ему не нужны.
+      clearSnapshot()
+      clearFiles()
+    }
+    user.value = u // до загрузки таблиц: если она упадёт, человек всё равно вошёл
+    sessionLost.value = false
     const [m, p, pc, f, s] = await Promise.all([
       supabase.from('members').select('*'),
       supabase.from('positions').select('*').order('sort'),
@@ -67,7 +81,7 @@ export const useApp = defineStore('app', () => {
       supabase.from('setlists').select('*').order('title'),
     ])
     const snap: Snapshot = {
-      user: { id: data.session.user.id, email: data.session.user.email ?? null },
+      user: u,
       members: must(m),
       positions: must(p),
       pieces: must(pc),
@@ -79,6 +93,7 @@ export const useApp = defineStore('app', () => {
       ? must(await supabase.from('band').select('invite_token').single()).invite_token
       : null
     offline.value = false
+    loadError.value = ''
     saveSnapshot(snap)
   }
 
@@ -101,6 +116,11 @@ export const useApp = defineStore('app', () => {
     if (snap) apply(snap)
     const network = reload()
     started = snap ? Promise.resolve() : network
+    // Приложение живёт в памяти днями: обновляемся, когда к нему вернулись и когда вернулась сеть.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reload()
+    })
+    addEventListener('online', () => reload())
     return started
   }
 
@@ -189,7 +209,8 @@ export const useApp = defineStore('app', () => {
         await supabase
           .from('files')
           .upsert(
-            { piece_id: pieceId, kind: it.kind, position_id, path, name: it.file.name, part_names: it.partNames },
+            // bars_per_page — разметка старого файла; у нового вёрстка может быть другой.
+            { piece_id: pieceId, kind: it.kind, position_id, path, name: it.file.name, part_names: it.partNames, bars_per_page: null },
             { onConflict: 'piece_id,position_id,kind' },
           ),
       )
@@ -227,7 +248,7 @@ export const useApp = defineStore('app', () => {
   const fileBlob = (path: string) => getFile(path, async (p) => must(await bucket().download(p)))
 
   return {
-    user, members, positions, pieces, files, setlists, inviteToken, loadError, offline, me, isOwner,
+    user, members, positions, pieces, files, setlists, inviteToken, loadError, offline, sessionLost, me, isOwner,
     start, refresh, reload, sendCode, verifyCode, join, updateMe, signOut,
     savePositions, deletePosition, resetInvite, removeMember,
     savePiece, deletePiece, updateFile, deleteFile, upload, saveSetlist, deleteSetlist, downloadSetlist, fileBlob,

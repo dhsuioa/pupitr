@@ -36,6 +36,7 @@ watch(paths, check, { immediate: true })
 const download = () => run(async () => {
   progress.value = 0
   try {
+    await app.reload() // свежий список: владелец мог заменить партию, старый путь уже удалён
     await app.downloadSetlist(paths.value, (n) => (progress.value = n))
   } finally {
     progress.value = null

@@ -42,15 +42,18 @@ const create = () => run(async () => {
         <RouterLink to="/settings" class="link">Настройки</RouterLink>
       </nav>
     </header>
+    <!-- Ошибка — отдельной строкой: если снимок есть, сетлисты остаются видны. -->
     <p v-if="app.loadError" class="text-red-400">
       {{ app.loadError }} <button class="link" @click="app.reload()">Повторить</button>
     </p>
-    <template v-else-if="!app.me">
-      <p>
-        Вы вошли как {{ app.user?.email }}, но ещё не состоите в коллективе.
-        Попросите у руководителя ссылку-приглашение.
-      </p>
-      <button class="link" @click="signOut">Выйти</button>
+    <template v-if="!app.me">
+      <template v-if="!app.loadError">
+        <p>
+          Вы вошли как {{ app.user?.email }}, но ещё не состоите в коллективе.
+          Попросите у руководителя ссылку-приглашение.
+        </p>
+        <button class="link" @click="signOut">Выйти</button>
+      </template>
     </template>
     <PositionPicker v-else-if="!app.me.position_id && !app.isOwner" />
     <template v-else>

@@ -1,4 +1,5 @@
 import type { FileRow, Member, Piece, Position, Setlist, SetlistItem } from './types'
+import { errorMessage } from './errors'
 
 // Снимок библиотеки на устройстве: из него интерфейс рисуется сразу, сеть только обновляет.
 export type Snapshot = {
@@ -53,14 +54,21 @@ export async function cachedCount(paths: string[]): Promise<number> {
   return hits.filter(Boolean).length
 }
 
+// Один пропавший файл не обрывает остальные: качаем всё, что можно, и в конце говорим, сколько не вышло.
 export async function cacheFiles(paths: string[], fetchFile: (path: string) => Promise<Blob>, onProgress: (n: number) => void) {
   const cache = await caches.open(CACHE)
+  const failed: unknown[] = []
   let done = 0
   for (const p of paths) {
-    if (!(await cache.match(key(p)))) await cache.put(key(p), new Response(await fetchFile(p)))
+    try {
+      if (!(await cache.match(key(p)))) await cache.put(key(p), new Response(await fetchFile(p)))
+    } catch (e) {
+      failed.push(e)
+    }
     onProgress(++done)
   }
   await navigator.storage?.persist?.()
+  if (failed.length) throw new Error(`Не скачано ${failed.length} из ${paths.length}: ${errorMessage(failed[0])}`)
 }
 
 // ponytail: старые версии файлов из кэша не чистим — мегабайты; чистка по пути, когда понадобится

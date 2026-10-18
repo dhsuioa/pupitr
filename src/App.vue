@@ -20,6 +20,9 @@ watch(() => app.user, (u) => {
   <div v-if="app.offline && !onStage" class="bg-neutral-800 px-4 py-1 text-center text-sm text-neutral-300">
     Нет связи — показаны сохранённые данные
   </div>
+  <div v-if="app.sessionLost && !onStage" class="bg-amber-300 px-4 py-1 text-center text-sm text-black">
+    Вход истёк — скачанные ноты на месте. <RouterLink to="/login" class="underline">Войти снова</RouterLink>
+  </div>
   <RouterView />
   <div
     v-if="needRefresh && !onStage"

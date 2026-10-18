@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getFile, neededPaths, offlineStatus } from './offline'
+import { cacheFiles, getFile, neededPaths, offlineStatus } from './offline'
 import type { FileRow } from './types'
 
 const file = (id: string, piece_id: string, position_id: string | null): FileRow => ({
@@ -43,5 +43,25 @@ describe('getFile', () => {
     expect(await (await getFile('a/1.pdf', fetchFile)).text()).toBe('ноты')
     expect(await (await getFile('a/1.pdf', fetchFile)).text()).toBe('ноты')
     expect(fetchFile).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('cacheFiles', () => {
+  it('один пропавший файл не обрывает остальные; в конце — сводная ошибка', async () => {
+    const store = new Map<string, Response>()
+    ;(globalThis as { caches?: unknown }).caches = {
+      open: async () => ({
+        match: async (k: string) => store.get(k)?.clone(),
+        put: async (k: string, r: Response) => void store.set(k, r),
+      }),
+    }
+    const fetchFile = async (p: string) => {
+      if (p === 'b') throw new Error('Object not found')
+      return new Blob([p])
+    }
+    const progress: number[] = []
+    await expect(cacheFiles(['a', 'b', 'c'], fetchFile, (n) => progress.push(n))).rejects.toThrow(/Не скачано 1 из 3/)
+    expect([...store.keys()]).toEqual(['files/a', 'files/c'])
+    expect(progress).toEqual([1, 2, 3])
   })
 })
